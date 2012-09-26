@@ -10,7 +10,7 @@ namespace vranalyzer_cl
     {
         static void Main(string[] args)
         {
-            XmlOutput.TextToXml(@"C:\Users\Public\Documents\Ishida Lab\", @"control.dat");
+            XmlOutput.TextToXml(@"C:\Users\Public\Documents\Ishida Lab\", @"control2.dat");
 
             Console.ReadLine();
         }

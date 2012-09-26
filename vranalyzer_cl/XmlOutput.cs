@@ -37,6 +37,12 @@ namespace vranalyzer_cl
             public int index { get; set; }
         }
 
+        class StimulusSet
+        {
+            int index;
+            int size;
+        }
+
         public static void TextToXml(string inDirectory, string inFile)
         {
             List<string> electrodeNames = new List<string>();
@@ -126,8 +132,6 @@ namespace vranalyzer_cl
             
             // after looping through the rows in the file
             totalRows = rowIndex;
-            Console.WriteLine(rowIndex);
-
 
             //write xml data
             XmlDocument doc = new XmlDocument();
@@ -152,7 +156,7 @@ namespace vranalyzer_cl
             int electrodeIndex = 0;
 
             //
-            int rowDeficit = rowIndex  % 10;
+            int rowDeficit = 10 - (rowIndex  % 10);
 
             foreach (Column column in colDataSet)
             {
@@ -177,16 +181,9 @@ namespace vranalyzer_cl
                 
                 foreach (DataElement element in column.colElements)
                 {
-
-                    /**
-                     * Create a new set every 10 - rowDeficit elements.
-                     * 
-                     **/
-                    // 
-                    // 
-                    if (timeSliceIndex % (10-rowDeficit) == 0)
+                    if ((timeSliceIndex % (10-rowDeficit) == 0)) 
                     {
-                        Console.WriteLine(timeSliceIndex);
+                        Console.WriteLine("10=-rowDeficit: " + (10 - rowDeficit).ToString());
                         stimulusSetNode = doc.CreateElement("StimulusSet");
                         stimulusSetAttribute = doc.CreateAttribute("id");
                         stimulusSetAttribute.Value = stimulusSetIndex.ToString();
@@ -207,7 +204,6 @@ namespace vranalyzer_cl
                     timeSliceNode.Attributes.Append(timeSliceAttributeIndex);
                     timeSliceNode.Attributes.Append(timeSliceAttributeTime);
 
-                    Console.WriteLine("Time: " + timeSliceNode.Attributes.GetNamedItem("time").InnerText);
 
                     timeSliceNode.AppendChild(doc.CreateTextNode(element.value.ToString()));
                     stimulusSetNode.AppendChild(timeSliceNode);
