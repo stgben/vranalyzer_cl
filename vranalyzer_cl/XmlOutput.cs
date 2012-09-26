@@ -39,15 +39,16 @@ namespace vranalyzer_cl
 
         class StimulusSet
         {
-            int index;
-            int size;
+            public int index { get; set; }
+            public int size { get; set; }
         }
 
         public static void TextToXml(string inDirectory, string inFile)
         {
-            List<string> electrodeNames = new List<string>();
+            List<string> channelNames = new List<string>();
 
             List<double> timeSlices = new List<double>();
+
             List<Column> colDataSet = new List<Column>();
 
             string directory = inDirectory;
@@ -56,14 +57,14 @@ namespace vranalyzer_cl
 
             // Header line looks like "T[s]\tName\tName\tName"
             // Read the header, skip over the T[s] portion. Then put the names into a list
-            // At the same time, use the header electrode names to determine the number
+            // At the same time, use the header channel names to determine the number
             // of columns in the file
             int columnCount = 0;
             foreach (string name in reader.ReadLine().Split('\t'))
             {
                 if (name == "T[s]")
                     continue;
-                electrodeNames.Add(name);
+                channelNames.Add(name);
                 columnCount++;
             }
 
@@ -102,6 +103,10 @@ namespace vranalyzer_cl
             {
                 // read in the row
                 string row = reader.ReadLine();
+                
+                // if any rows after the headline row is empty, skip it
+                if (row == string.Empty)
+                    continue;
 
                 // find where the time value ends and data entries begin
                 int indexOfFirstTab = row.IndexOf('\t');
@@ -145,15 +150,15 @@ namespace vranalyzer_cl
             doc.AppendChild(fileNameNode);
 
             /**
-             * int electrodeIndex = 0;
+             * int channelIndex = 0;
              * int timeSliceIndex = 0;
              * foreach(column in colDataSet)
-             *  add electrode name node
+             *  add channel name node
              *  foreach(dataelement in column)
              *      add time in to file
              *      value = dataelement.value
              **/
-            int electrodeIndex = 0;
+            int channelIndex = 0;
 
             //
             int rowDeficit = 10 - (rowIndex  % 10);
@@ -161,14 +166,16 @@ namespace vranalyzer_cl
             foreach (Column column in colDataSet)
             {
                 int timeSliceIndex = 0;
-                int stimulusSetIndex = 0;
+                StimulusSet stimulusSet = new StimulusSet();
+                stimulusSet.index = 0;
+                stimulusSet.size = 0;
 
-                // electrode node
-                XmlNode electrodeNode = doc.CreateElement("Electrode");
-                XmlAttribute electrodeAttribute = doc.CreateAttribute("id");
-                electrodeAttribute.Value = electrodeNames[electrodeIndex];
-                electrodeNode.Attributes.Append(electrodeAttribute);
-                fileNameNode.AppendChild(electrodeNode);
+                // channel node
+                XmlNode channelNode = doc.CreateElement("Channel");
+                XmlAttribute channelAttribute = doc.CreateAttribute("id");
+                channelAttribute.Value = channelNames[channelIndex];
+                channelNode.Attributes.Append(channelAttribute);
+                fileNameNode.AppendChild(channelNode);
 
                 /**
                  * For each column, we clump every 10 elements together in what is called
@@ -181,7 +188,10 @@ namespace vranalyzer_cl
                 
                 foreach (DataElement element in column.colElements)
                 {
-                    if ((timeSliceIndex % (10-rowDeficit) == 0)) 
+                    
+                    /**
+                     * working-ish!
+                    if ((timeSliceIndex % (10-rowDeficit) == 0) && stimulusSetIndex == 0) 
                     {
                         Console.WriteLine("10=-rowDeficit: " + (10 - rowDeficit).ToString());
                         stimulusSetNode = doc.CreateElement("StimulusSet");
@@ -189,10 +199,58 @@ namespace vranalyzer_cl
                         stimulusSetAttribute.Value = stimulusSetIndex.ToString();
 
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                        electrodeNode.AppendChild(stimulusSetNode);
+                        channelNode.AppendChild(stimulusSetNode);
 
-                        if (timeSliceIndex >= 0)
-                            stimulusSetIndex++;
+                        stimulusSetIndex++;
+                    }
+                    else if ((timeSliceIndex % 10) == 0)
+                    {
+                        stimulusSetIndex++;
+                        stimulusSetNode = doc.CreateElement("StimulusSet");
+                        stimulusSetAttribute = doc.CreateAttribute("id");
+                        stimulusSetAttribute.Value = stimulusSetIndex.ToString();
+
+                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
+                        channelNode.AppendChild(stimulusSetNode);
+                    }
+                     **/
+                    if (stimulusSet.index == 0 && stimulusSet.size == 0)
+                    {
+                        stimulusSetNode = doc.CreateElement("StimulusSet");
+                        stimulusSetAttribute = doc.CreateAttribute("id");
+                        stimulusSetAttribute.Value = stimulusSet.index.ToString();
+
+                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
+                        channelNode.AppendChild(stimulusSetNode);
+
+                    }
+                    if (stimulusSet.index == 0 && ( (stimulusSet.size == 10-rowDeficit) ))
+                    {
+                        stimulusSetNode = doc.CreateElement("StimulusSet");
+                        stimulusSetAttribute = doc.CreateAttribute("id");
+                        stimulusSetAttribute.Value = stimulusSet.index.ToString();
+
+                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
+                        channelNode.AppendChild(stimulusSetNode);
+
+                        stimulusSet.index++;
+                        stimulusSet.size = 0;
+                    }
+
+                    else if (stimulusSet.size == 10)
+                    {
+
+
+                        stimulusSetNode = doc.CreateElement("StimulusSet");
+                        stimulusSetAttribute = doc.CreateAttribute("id");
+                        stimulusSetAttribute.Value = stimulusSet.index.ToString();
+
+                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
+                        channelNode.AppendChild(stimulusSetNode);
+
+                        stimulusSet.index++;
+                        stimulusSet.size = 0;
+
                     }
 
                     //else if (element.index % 10 == 0)
@@ -209,9 +267,10 @@ namespace vranalyzer_cl
                     stimulusSetNode.AppendChild(timeSliceNode);
 
                     timeSliceIndex++;
+                    stimulusSet.size++;
                 }
 
-                electrodeIndex++;
+                channelIndex++;
             }
 
             string outFileName = fileName.Substring(0, fileName.LastIndexOf("."));
