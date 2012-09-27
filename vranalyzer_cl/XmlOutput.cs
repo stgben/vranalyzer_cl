@@ -230,7 +230,7 @@ namespace vranalyzer_cl
                         stimulusSetAttribute.Value = stimulusSet.index.ToString();
 
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                        channelNode.AppendChild(stimulusSetNode);
+                        channelNode.AppendChild(stimulusSetNode);   
 
                     }
                     if (stimulusSet.index == 0 && ( (stimulusSet.size == 10-rowDeficit) ))
@@ -267,7 +267,12 @@ namespace vranalyzer_cl
                     XmlNode timeSliceNode = doc.CreateElement("Time");
                     XmlAttribute timeSliceAttributeIndex = doc.CreateAttribute("index");
                     XmlAttribute timeSliceAttributeTime = doc.CreateAttribute("time");
-                    timeSliceAttributeIndex.Value = timeSliceIndex.ToString();
+
+                    // We want to shift the time slice index to account for missing rows
+                    // This way we can safely match up indices within each stimulus set in 
+                    // order to take averages and deal with the data in general
+                     
+                    timeSliceAttributeIndex.Value = (timeSliceIndex + rowDeficit).ToString();
                     timeSliceAttributeTime.Value = timeSlices[timeSliceIndex].ToString();
                     timeSliceNode.Attributes.Append(timeSliceAttributeIndex);
                     timeSliceNode.Attributes.Append(timeSliceAttributeTime);

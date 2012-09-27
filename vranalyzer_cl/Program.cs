@@ -11,8 +11,9 @@ namespace vranalyzer_cl
         static void Main(string[] args)
         {
             XmlOutput.TextToXml(@"C:\Users\Public\Documents\Ishida Lab\", @"control2.dat");
-            //XmlInput xi = new XmlInput(@"C:\Users\Public\Documents\Ishida Lab\", @"control2.xml");
+            XmlInput xi = new XmlInput(@"C:\Users\Public\Documents\Ishida Lab\", @"control2.xml");
 
+            
             Console.ReadLine();
         }
     }
