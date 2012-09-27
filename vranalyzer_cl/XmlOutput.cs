@@ -140,8 +140,7 @@ namespace vranalyzer_cl
 
             //write xml data
             XmlDocument doc = new XmlDocument();
-            XmlNode docNode = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
-            doc.AppendChild(docNode);
+            XmlNode declaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
 
             XmlNode fileNameNode = doc.CreateElement("File_Name");
             XmlAttribute fileNameAttribute = doc.CreateAttribute("value");
@@ -173,7 +172,14 @@ namespace vranalyzer_cl
                 // channel node
                 XmlNode channelNode = doc.CreateElement("Channel");
                 XmlAttribute channelAttribute = doc.CreateAttribute("id");
-                channelAttribute.Value = channelNames[channelIndex];
+
+                // We only want the number preceeding the "-Min[uV]" portion of the name
+                // We will end up with channel id's like "21" , "52" , etc.
+                int indexOfDash = channelNames[channelIndex].IndexOf("-");
+                string channelName = channelNames[channelIndex].Substring(0, indexOfDash);
+
+
+                channelAttribute.Value = channelName;
                 channelNode.Attributes.Append(channelAttribute);
                 fileNameNode.AppendChild(channelNode);
 
@@ -214,6 +220,9 @@ namespace vranalyzer_cl
                         channelNode.AppendChild(stimulusSetNode);
                     }
                      **/
+                    
+                    // In other words, are we looking at the very first element?
+                    // If so, create a new XML "element"
                     if (stimulusSet.index == 0 && stimulusSet.size == 0)
                     {
                         stimulusSetNode = doc.CreateElement("StimulusSet");
@@ -226,6 +235,9 @@ namespace vranalyzer_cl
                     }
                     if (stimulusSet.index == 0 && ( (stimulusSet.size == 10-rowDeficit) ))
                     {
+
+                        stimulusSet.index++;
+                        stimulusSet.size = 0;
                         stimulusSetNode = doc.CreateElement("StimulusSet");
                         stimulusSetAttribute = doc.CreateAttribute("id");
                         stimulusSetAttribute.Value = stimulusSet.index.ToString();
@@ -233,14 +245,14 @@ namespace vranalyzer_cl
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
                         channelNode.AppendChild(stimulusSetNode);
 
-                        stimulusSet.index++;
-                        stimulusSet.size = 0;
                     }
 
                     else if (stimulusSet.size == 10)
                     {
 
 
+                        stimulusSet.index++;
+                        stimulusSet.size = 0;
                         stimulusSetNode = doc.CreateElement("StimulusSet");
                         stimulusSetAttribute = doc.CreateAttribute("id");
                         stimulusSetAttribute.Value = stimulusSet.index.ToString();
@@ -248,8 +260,6 @@ namespace vranalyzer_cl
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
                         channelNode.AppendChild(stimulusSetNode);
 
-                        stimulusSet.index++;
-                        stimulusSet.size = 0;
 
                     }
 
@@ -274,7 +284,11 @@ namespace vranalyzer_cl
             }
 
             string outFileName = fileName.Substring(0, fileName.LastIndexOf("."));
-            doc.Save(directory + outFileName + ".xml");
+            //doc.Save(directory + outFileName + ".xml");
+            using (TextWriter sw = new StreamWriter(directory + outFileName + ".xml", false, Encoding.UTF8)) //Set encoding
+            {
+                doc.Save(sw);
+            }
         }
     }
 }
