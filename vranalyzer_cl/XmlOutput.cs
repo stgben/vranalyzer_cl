@@ -43,35 +43,53 @@ namespace vranalyzer_cl
             public int size { get; set; }
         }
 
-        public static void TextToXml(string inDirectory, string inFile)
+        public static int CountColumns(StreamReader sReader)
+        {
+            int columns = 0;
+
+            foreach (string name in sReader.ReadLine().Split('\t'))
+            {
+                if (name == "T[s]")
+                    continue;
+                columns++;
+            }
+            return columns;
+        }
+
+        public static List<string> GetChannelNames(StreamReader reader)
         {
             List<string> channelNames = new List<string>();
-
-            List<double> timeSlices = new List<double>();
-
-            List<Column> colDataSet = new List<Column>();
-
-            string directory = inDirectory;
-            string fileName = inFile;
-            StreamReader reader = new StreamReader(directory + fileName);
-
-            // Header line looks like "T[s]\tName\tName\tName"
-            // Read the header, skip over the T[s] portion. Then put the names into a list
-            // At the same time, use the header channel names to determine the number
-            // of columns in the file
-            int columnCount = 0;
             foreach (string name in reader.ReadLine().Split('\t'))
             {
                 if (name == "T[s]")
                     continue;
                 channelNames.Add(name);
-                columnCount++;
             }
+
+            return channelNames;
+        }
+
+        public static void TextToXml(string inDirectory, string inFile)
+        {
+            List<string> channelNames = new List<string>();
+            List<double> timeSlices = new List<double>();
+            List<Column> colDataSet = new List<Column>();
+            StreamReader sReader = new StreamReader(inDirectory + inFile);
+            
+
+            // Header line looks like "T[s]\tName\tName\tName"
+            // Read the header, skip over the T[s] portion. Then put the names into a list
+            // At the same time, use the header channel names to determine the number
+            // of columns in the file
+
+
+            int columnCount = CountColumns(sReader);
+            channelNames = GetChannelNames(sReader);
 
             // *******************************************************************
             // Empty line between header and data. Skip over empty line
             // Only sometimes ????
-            //reader.ReadLine();
+            //sReader.ReadLine();
             // *******************************************************************
 
             /**
@@ -99,10 +117,10 @@ namespace vranalyzer_cl
             int totalRows;
 
             // Loop through all of the rows in the file
-            while (!reader.EndOfStream)
+            while (!sReader.EndOfStream)
             {
                 // read in the row
-                string row = reader.ReadLine();
+                string row = sReader.ReadLine();
                 
                 // if any rows after the headline row is empty, skip it
                 if (row == string.Empty)
@@ -144,7 +162,7 @@ namespace vranalyzer_cl
 
             XmlNode fileNameNode = doc.CreateElement("File_Name");
             XmlAttribute fileNameAttribute = doc.CreateAttribute("value");
-            fileNameAttribute.Value = fileName;
+            fileNameAttribute.Value = inFile;
             fileNameNode.Attributes.Append(fileNameAttribute);
             doc.AppendChild(fileNameNode);
 
@@ -288,9 +306,9 @@ namespace vranalyzer_cl
                 channelIndex++;
             }
 
-            string outFileName = fileName.Substring(0, fileName.LastIndexOf("."));
+            string outFileName = inFile.Substring(0, inFile.LastIndexOf("."));
             //doc.Save(directory + outFileName + ".xml");
-            using (TextWriter sw = new StreamWriter(directory + outFileName + ".xml", false, Encoding.UTF8)) //Set encoding
+            using (TextWriter sw = new StreamWriter(inDirectory + outFileName + ".xml", false, Encoding.UTF8)) //Set encoding
             {
                 doc.Save(sw);
             }
