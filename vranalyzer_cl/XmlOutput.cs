@@ -43,20 +43,7 @@ namespace vranalyzer_cl
             public int size { get; set; }
         }
 
-        public static int CountColumns(StreamReader sReader)
-        {
-            int columns = 0;
-
-            foreach (string name in sReader.ReadLine().Split('\t'))
-            {
-                if (name == "T[s]")
-                    continue;
-                columns++;
-            }
-            return columns;
-        }
-
-        public static List<string> GetChannelNames(StreamReader reader)
+        private static List<string> GetChannelNames(StreamReader reader)
         {
             List<string> channelNames = new List<string>();
             foreach (string name in reader.ReadLine().Split('\t'))
@@ -69,20 +56,60 @@ namespace vranalyzer_cl
             return channelNames;
         }
 
-        public static List<Column> GenerateColumnSet(List<Column> columnSet, int columnCount)
+        private static List<Column> InitializeColDataSet(int numColumns)
         {
-            for (int i = 0; i < columnCount; i++)
+            List<Column> colData = new List<Column>();
+
+            for (int i = 0; i < numColumns; i++)
             {
                 Column column = new Column();
                 column.index = i;
                 column.colElements = new List<DataElement>();
 
-                columnSet.Add(column);
+                colData.Add(column);
             }
-
-            return columnSet;
+            return colData;
         }
 
+        private static List<string> ReadRows(StreamReader sReader, List<double> timeSlices)
+        {
+            // read in the row
+            string row = sReader.ReadLine();
+
+            // if any rows after the headline row is empty, skip it
+            if (row == string.Empty)
+                return null;
+
+            // find where the time value ends and data entries begin
+            int indexOfFirstTab = row.IndexOf('\t');
+
+            // store the time, from front of row
+            double time = Convert.ToDouble(row.Substring(0, indexOfFirstTab));
+            timeSlices.Add(time);
+
+            // All of the row's data go into rowValues. 
+            List<string> rowValues = new List<string>();
+
+            // Just need to separate the different values from the string cluster
+            // holding all of the data
+            foreach (string reading in row.Substring(indexOfFirstTab + 1).Split('\t'))
+            {
+                rowValues.Add(reading);
+            }
+
+            return rowValues;
+        }
+
+        private static List<Column> RowToColumn(List<Column> colData, int columnCount, int rowIndex, List<string> rowValues)
+        {
+            for (int i = 0; i < columnCount; i++)
+            {
+                colData[i].colElements.Add(new DataElement());
+                colData[i].colElements[rowIndex].value = Convert.ToDouble(rowValues[i]);
+            }
+
+            return colData;
+        }
 
         public static void TextToXml(string inDirectory, string inFile)
         {
@@ -90,85 +117,35 @@ namespace vranalyzer_cl
             List<double> timeSlices = new List<double>();
             List<Column> colDataSet = new List<Column>();
             StreamReader sReader = new StreamReader(inDirectory + inFile);
-            
 
-            // Header line looks like "T[s]\tName\tName\tName"
-            // Read the header, skip over the T[s] portion. Then put the names into a list
-            // At the same time, use the header channel names to determine the number
-            // of columns in the file
-
-
-            int columnCount = CountColumns(sReader);
-
-            
-            // reset the reader
-            sReader = new StreamReader(inDirectory + inFile);
             channelNames = GetChannelNames(sReader);
 
-            // *******************************************************************
-            // Empty line between header and data. Skip over empty line
-            // Only sometimes ????
-            //sReader.ReadLine();
-            // *******************************************************************
+            colDataSet = InitializeColDataSet(channelNames.Count);
+            
 
-            /**
-             * For every column in the file (found by counting header names),
-             * generate a new Column object to put into the overall data set
-             **/
+            #region Read File. Store data in columns.
 
-            colDataSet = GenerateColumnSet(colDataSet, columnCount);
-
-            /**
-             * Each data row looks like "Time\tValue\tValue\tValue"
-             * Pull out time, then get data
-            **/
-
-            // RowIndex quite simply keeps track of what row is being read in the file. We need
-            // this to determine where to place the data within the column element list.
             int rowIndex = 0;
             int totalRows;
-
-            // Loop through all of the rows in the file
             while (!sReader.EndOfStream)
             {
-                // read in the row
-                string row = sReader.ReadLine();
-                
-                // if any rows after the headline row is empty, skip it
-                if (row == string.Empty)
+                List<string> rowValues = ReadRows(sReader, timeSlices);
+
+                if (rowValues == null)
                     continue;
 
-                // find where the time value ends and data entries begin
-                int indexOfFirstTab = row.IndexOf('\t');
-
-                // store the time, from front of row
-                double time = Convert.ToDouble(row.Substring(0, indexOfFirstTab));
-                timeSlices.Add(time);
-
-                // All of the row's data go into rowValues. 
-                List<string> rowValues = new List<string>();
-
-                // Just need to separate the different values from the string cluster
-                // holding all of the data
-                foreach (string reading in row.Substring(indexOfFirstTab + 1).Split('\t'))
-                {
-                    rowValues.Add(reading);
-                }
-
-                // Place one piece of data in each column for this particular row
-                for (int i = 0; i < columnCount; i++)
-                {
-                    colDataSet[i].colElements.Add(new DataElement());
-                    colDataSet[i].colElements[rowIndex].value = Convert.ToDouble(rowValues[i]);
-                }
-
+                colDataSet = RowToColumn(colDataSet, channelNames.Count, rowIndex, rowValues);
+                    
                 rowIndex++;
-            }
-            
-            // after looping through the rows in the file
-            totalRows = rowIndex;
+             }
+  
+             totalRows = rowIndex;
+             #endregion
 
-            //write xml data
+
+            #region Write Xml Data
+
+           
             XmlDocument doc = new XmlDocument();
             XmlNode declaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
 
@@ -178,19 +155,9 @@ namespace vranalyzer_cl
             fileNameNode.Attributes.Append(fileNameAttribute);
             doc.AppendChild(fileNameNode);
 
-            /**
-             * int channelIndex = 0;
-             * int timeSliceIndex = 0;
-             * foreach(column in colDataSet)
-             *  add channel name node
-             *  foreach(dataelement in column)
-             *      add time in to file
-             *      value = dataelement.value
-             **/
+            
             int channelIndex = 0;
-
-            //
-            int rowDeficit = 10 - (rowIndex  % 10);
+            int rowDeficit = 10 - (rowIndex % 10);
 
             foreach (Column column in colDataSet)
             {
@@ -221,10 +188,10 @@ namespace vranalyzer_cl
                 XmlNode stimulusSetNode = doc.CreateElement("StimulusSet");
                 XmlAttribute stimulusSetAttribute = doc.CreateAttribute("id");
                 stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                
+
                 foreach (DataElement element in column.colElements)
                 {
-                    
+
                     // In other words, are we looking at the very first element?
                     // If so, create a new XML "element"
                     if (stimulusSet.index == 0 && stimulusSet.size == 0)
@@ -234,10 +201,16 @@ namespace vranalyzer_cl
                         stimulusSetAttribute.Value = stimulusSet.index.ToString();
 
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                        channelNode.AppendChild(stimulusSetNode);   
+                        channelNode.AppendChild(stimulusSetNode);
 
                     }
-                    if (stimulusSet.index == 0 && ( (stimulusSet.size == 10-rowDeficit) ))
+
+                    /* 
+                     * Are we looking at what should be the last element of the first stimulus set?
+                     * This is determined by the row deficit
+                     * 
+                     **/
+                    if (stimulusSet.index == 0 && ((stimulusSet.size == 10 - rowDeficit)))
                     {
 
                         stimulusSet.index++;
@@ -250,11 +223,14 @@ namespace vranalyzer_cl
                         channelNode.AppendChild(stimulusSetNode);
 
                     }
+                    
 
+                    /*
+                     * If this is any set other than the first, it's size should be 10.
+                     * 
+                     **/
                     else if (stimulusSet.size == 10)
                     {
-
-
                         stimulusSet.index++;
                         stimulusSet.size = 0;
                         stimulusSetNode = doc.CreateElement("StimulusSet");
@@ -264,10 +240,8 @@ namespace vranalyzer_cl
                         stimulusSetNode.Attributes.Append(stimulusSetAttribute);
                         channelNode.AppendChild(stimulusSetNode);
 
-
                     }
 
-                    //else if (element.index % 10 == 0)
                     XmlNode timeSliceNode = doc.CreateElement("Time");
                     XmlAttribute timeSliceAttributeIndex = doc.CreateAttribute("index");
                     XmlAttribute timeSliceAttributeTime = doc.CreateAttribute("time");
@@ -275,7 +249,7 @@ namespace vranalyzer_cl
                     // We want to shift the time slice index to account for missing rows
                     // This way we can safely match up indices within each stimulus set in 
                     // order to take averages and deal with the data in general
-                     
+
                     timeSliceAttributeIndex.Value = (timeSliceIndex + rowDeficit).ToString();
                     timeSliceAttributeTime.Value = timeSlices[timeSliceIndex].ToString();
                     timeSliceNode.Attributes.Append(timeSliceAttributeIndex);
@@ -298,6 +272,8 @@ namespace vranalyzer_cl
             {
                 doc.Save(sw);
             }
+
+            #endregion
         }
     }
 }

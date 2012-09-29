@@ -50,6 +50,7 @@ namespace vranalyzer_cl
         class ChannelAverage
         {
             public List<double> averages { get; set; }
+
         }
         public XmlInput(string filePath, string fileName)
         {
