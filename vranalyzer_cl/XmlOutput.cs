@@ -69,6 +69,21 @@ namespace vranalyzer_cl
             return channelNames;
         }
 
+        public static List<Column> GenerateColumnSet(List<Column> columnSet, int columnCount)
+        {
+            for (int i = 0; i < columnCount; i++)
+            {
+                Column column = new Column();
+                column.index = i;
+                column.colElements = new List<DataElement>();
+
+                columnSet.Add(column);
+            }
+
+            return columnSet;
+        }
+
+
         public static void TextToXml(string inDirectory, string inFile)
         {
             List<string> channelNames = new List<string>();
@@ -84,6 +99,10 @@ namespace vranalyzer_cl
 
 
             int columnCount = CountColumns(sReader);
+
+            
+            // reset the reader
+            sReader = new StreamReader(inDirectory + inFile);
             channelNames = GetChannelNames(sReader);
 
             // *******************************************************************
@@ -96,15 +115,8 @@ namespace vranalyzer_cl
              * For every column in the file (found by counting header names),
              * generate a new Column object to put into the overall data set
              **/
-            for (int i = 0; i < columnCount; i++)
-            {
-                Column column = new Column();
-                column.index = i;
-                column.colElements = new List<DataElement>();
 
-                colDataSet.Add(column);
-            }
-
+            colDataSet = GenerateColumnSet(colDataSet, columnCount);
 
             /**
              * Each data row looks like "Time\tValue\tValue\tValue"
@@ -212,32 +224,6 @@ namespace vranalyzer_cl
                 
                 foreach (DataElement element in column.colElements)
                 {
-                    
-                    /**
-                     * working-ish!
-                    if ((timeSliceIndex % (10-rowDeficit) == 0) && stimulusSetIndex == 0) 
-                    {
-                        Console.WriteLine("10=-rowDeficit: " + (10 - rowDeficit).ToString());
-                        stimulusSetNode = doc.CreateElement("StimulusSet");
-                        stimulusSetAttribute = doc.CreateAttribute("id");
-                        stimulusSetAttribute.Value = stimulusSetIndex.ToString();
-
-                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                        channelNode.AppendChild(stimulusSetNode);
-
-                        stimulusSetIndex++;
-                    }
-                    else if ((timeSliceIndex % 10) == 0)
-                    {
-                        stimulusSetIndex++;
-                        stimulusSetNode = doc.CreateElement("StimulusSet");
-                        stimulusSetAttribute = doc.CreateAttribute("id");
-                        stimulusSetAttribute.Value = stimulusSetIndex.ToString();
-
-                        stimulusSetNode.Attributes.Append(stimulusSetAttribute);
-                        channelNode.AppendChild(stimulusSetNode);
-                    }
-                     **/
                     
                     // In other words, are we looking at the very first element?
                     // If so, create a new XML "element"
